@@ -157,28 +157,42 @@ of the returned vector.  If PREFIX is nil or empty, nil is returned."
 					 'display org-modern-indent-guide))
 		  t))))))))
 
-(defvar-local org-modern-indent--init nil)
-(defun org-modern-indent--wait-and-refresh (buf)
-  "Wait for org-indent to finish initializing BUF, then refresh."
+(defvar org-modern-indent-agent-timer nil)
+(defvar org-modern-indent-pending-buffers nil)
+
+(defun org-modern-indent--queue-buffer (buf)
+  "Adds BUF to `org-modern-indent-pending-buffers' and start the agent's timer"
+  (if org-modern-indent-pending-buffers
+      (push buf org-modern-indent-pending-buffers)
+    (push buf org-modern-indent-pending-buffers)
+    (setq
+     org-modern-indent-agent-timer
+     (run-with-idle-timer 0.2 t #'org-modern-indent--run-agent))))
+
+(defun org-modern-indent--run-agent ()
+  "Initialize current buffer or one of the `org-modern-indent-pending-buffers'"
+  (setq org-modern-indent-pending-buffers
+        (cl-remove-if-not #'buffer-live-p org-modern-indent-pending-buffers))
+  (cond
+   ((not org-modern-indent-pending-buffers)
+    (cancel-timer org-modern-indent-agent-timer))
+   ((memq (current-buffer) org-modern-indent-pending-buffers)
+    (org-modern-indent--initialize-buffer (current-buffer)))
+   (t (org-modern-indent--initialize-buffer
+       (car org-modern-indent-pending-buffers))))
+  )
+
+(defun org-modern-indent--initialize-buffer (buf)
+  "Apply org-modern-indent styles to BUF and remove it from the list of pending
+buffers."
   (if (or (not (bound-and-true-p org-indent-agentized-buffers))
-	  (not (memq buf org-indent-agentized-buffers)))
-      (when (buffer-live-p buf)	     ; org-capture buffers vanish fast
-	(with-current-buffer buf
-	  (font-lock-add-keywords nil org-modern-indent--font-lock-keywords t)
-	  (font-lock-flush)))
-    ;; still waiting
-    (with-current-buffer buf
-      (if org-modern-indent--init
-	  (let ((cnt (cl-incf (cadr org-modern-indent--init))))
-	    (if (> cnt 5)
-		(user-error
-		 "org-modern-indent: Gave up waiting for %s to initialize" buf)
-	      (timer-activate (timer-set-time (car org-modern-indent--init)
-					      (time-add (current-time) 0.2)))))
-	(setq
-	 org-modern-indent--init
-	 (list (run-at-time 0.1 nil #'org-modern-indent--wait-and-refresh buf)
-	       1))))))
+          (not (memq buf org-indent-agentized-buffers)))
+      (when (buffer-live-p buf)
+        (with-current-buffer buf
+          (font-lock-add-keywords nil org-modern-indent--font-lock-keywords t)
+          (font-lock-flush))
+        (setq org-modern-indent-pending-buffers
+              (delq buf org-modern-indent-pending-buffers)))))
 
 (defun org-modern-indent--refresh ()
   "Unfontify entire buffer and refresh line prefix."
@@ -234,7 +248,7 @@ END, and R are its arguments."
 		    #'org-modern-indent--refresh-watch)
 	(advice-add 'org-indent-add-properties :filter-args
 		    #'org-modern-indent--store-refresh-args)
-	(org-modern-indent--wait-and-refresh (current-buffer)))
+	(org-modern-indent--queue-buffer (current-buffer)))
     ;; Disabling
     (advice-remove 'org-indent-refresh-maybe
 		   #'org-modern-indent--refresh-watch)
