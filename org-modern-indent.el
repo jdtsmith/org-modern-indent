@@ -118,10 +118,9 @@ returned."
 	 (indent (current-indentation)) ; space up to #+begin_
 	 (block-indent (+ (point) indent))
 	 (search (concat "^[[:blank:]]\\{" (number-to-string indent) "\\}"))
-	 (wrap (concat (propertize
-			(make-string (if pf (+ indent (length pf) -1) indent) ?\s)
-			'face 'org-indent)
-		       org-modern-indent-guide))
+	 (wrap (concat (propertize (make-string (length pf) ?\s) 'face 'org-indent)
+                   (make-string (max (- indent 1) 0 ) ?\s)
+		           org-modern-indent-guide))
 	 orig-prefix)
     (with-silent-modifications
       (when flush		  ; formerly this block was flush left
