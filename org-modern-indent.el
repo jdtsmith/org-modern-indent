@@ -133,19 +133,20 @@ block (at the beginning and end of the lines containing the header and
 footer, respectively).  Note that the first block's beginning may lie
 prior to BEG, and the last block's end my fall past END, if either only
 partially overlaps the region."
-  (org-with-wide-buffer
-   (goto-char beg)
-   (let ((node (omi/-block-at-point)) finished)
-     (while (not finished)
-       (when node
-	 (cl-destructuring-bind (bbeg . bend) (omi/-block-beg-end node)
-	   (funcall fun bbeg bend)
-	   (goto-char bend)
-	   (when (>= bend end) (setq finished t)))) ; last block
-       (unless finished
-	 (if (re-search-forward omi/begin-re end t)
-	     (setq node (omi/-block-at-point))
-	   (setq finished t)))))))
+  (save-match-data
+    (org-with-wide-buffer
+     (goto-char beg)
+     (let ((node (omi/-block-at-point)) finished)
+       (while (not finished)
+	 (when node
+	   (cl-destructuring-bind (bbeg . bend) (omi/-block-beg-end node)
+	     (funcall fun bbeg bend)
+	     (goto-char bend)
+	     (when (>= bend end) (setq finished t)))) ; last block
+	 (unless finished
+	   (if (re-search-forward omi/begin-re end t)
+	       (setq node (omi/-block-at-point))
+	     (setq finished t))))))))
 
 ;;;; Drawing block brackets
 (defun omi/-draw-block (beg end beg0 end0 org-indent real-indent)
