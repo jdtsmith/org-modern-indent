@@ -57,14 +57,14 @@ Bulk-indented blocks have "real" (space/tab) indent applied and managed by org. 
 
 As an important principle, `org-modern-indent` does not alter the contents of the text in your org documents, not even indentation.  It just styles what is there.  To help achieve proper block bulk-indented alignment, here are a few ways to alter blocks indentation using org and other commands:
 
-- **Start things right**: Hit return after your last line of text (e.g in a list item), then immediately hit `C-c C,` to create the desired block.  It will be indented at the right level:
+- **Start things right**: Hit return after your last line of text (e.g in a list item), then immediately hit `C-c C-,` to create the desired block.  It will be indented at the right level:
    ```org
    - This list item contains a:
        - sublist, which holds a block:
 	     [C-c C-,] here
    ```
 - **Move flush left**: Note: `M-{` will get you to the start of a block quickly.  `M-\` at block start will move the block's first header line to column 0.  Then `M-S-left` (or `right`) will indent the full block.
-- **Indent rigidly**: `M-h` selects the entire block. Then `C-x TAB` enters "rigid indent" mode, after which left/right moves the entire block.
+- **Indent rigidly**: `M-h` selects the entire block. Then `C-x TAB` enters "rigid indent" mode, after which `left`/`right` moves the entire block.
 - **Re-indent a block**: If you have a block that is partially aligned, perhaps with a "hanging end", like so:
    ```org
    - List 1
