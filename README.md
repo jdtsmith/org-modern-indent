@@ -10,6 +10,7 @@ This small package approximately reproduces the block styling of `org-modern` wh
 
 
 ## Updates
+- **v0.5.2**: Prevent `org-todo` capitalization issues.
 - **v0.5.1**: Small simplifications for block drawing.
 - **v0.5**: Another complete rewrite which substantially improves
   performance and accuracy.  Now block detection uses `org-element`
