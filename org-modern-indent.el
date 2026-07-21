@@ -68,16 +68,16 @@ value is a vector of length 3:
 
   [BEGIN GUIDE END]
 
-holding the wrap/indent prefix strings for the block begin, end, and
-guide (body).")
+holding the wrap/indent prefix strings for the block begin, guide (body),
+ and end.")
 
 (defun omi/-prefix (org-indent extra-indent)
   "Cache and return prefix strings based on the indent levels.
 There are 2 types of indentation: ORG-INDENT (styled with `org-indent'
-face), and EXTRA-INDENT (unstyled).  See `org-modern-indent--prefix' for
-the contents."
+face), and EXTRA-INDENT (unstyled).  See `org-modern-indent--prefixes'
+for the contents."
   (unless (and (= org-indent 0) (= extra-indent 0))
-    (let* ((key (+ org-indent (* 1000 extra-indent)))
+    (let* ((key (+ org-indent (* 10000 extra-indent)))
 	   (cached (gethash key omi/-prefixes)))
       (or cached
 	  (puthash key
@@ -180,11 +180,20 @@ indentation.  REAL-INDENT may be zero."
 		 (after-end (omi/-lbp end 2))
 		 (body-final (if (= end-bol end0-bol) end-bol after-end)))
 	    (add-prefixes body-start body-final guide-prefix guide-prefix)
-	    (when (> real-indent 0)
+	    (when (> real-indent 0) 	; add body display guides
 	      (goto-char body-start)
 	      (while (< (point) body-final)
-		(when (>= (current-indentation) real-indent)
-		  (add-guides (point) (+ (point) real-indent) guide-display))
+		(let ((ci (current-indentation)))
+		  (if (>= ci real-indent)
+		      (add-guides (point) (+ (point) real-indent)
+				  guide-display)
+		    (when (and (= ci 0) (eq (char-after) ?\n)) ;fully blank
+		      ;; Note: we must not cache and reuse strings for
+		      ;; blank line display, as emacs consolidates
+		      ;; stretches of chars with identical display
+		      ;; property (even multiple newlines).
+		      (add-guides (point) (1+ (point))
+				  (concat guide-display "\n")))))
 		(forward-line)))
 	    (when (= end-bol end0-bol) ;; END
 	      (if (= real-indent 0)
@@ -208,6 +217,7 @@ END, and R are its arguments."
       (apply fun beg end r))))
 
 (defun omi/-strip-display (beg end)
+  "Strip our special display property from BEG to END."
   (with-silent-modifications
     (remove-text-properties beg end '(omi/display nil))))
 
@@ -298,28 +308,28 @@ To be added after `org-indent-refresh-maybe' on
     (setq beg (omi/-lbp beg) end (omi/-lbp end 2))
     (remove-text-properties beg end '(omi/display nil))
     (omi/-walk-blocks beg end
-     (lambda (bl-beg bl-end)
-       (let ((beg0 bl-beg) (end0 bl-end)
-	     (pf (get-text-property bl-beg 'line-prefix))
-	     oi-pos oi ci full-block)
-	 (save-excursion
-	   (goto-char bl-beg)
-	   (back-to-indentation)
-	   (setq oi-pos (point)
-		 oi (get-text-property oi-pos :omi/indent)
-		 ci (current-indentation)))
-	 (unless (eq oi ci)
-	   (put-text-property oi-pos (1+ oi-pos) :omi/indent ci))
-	 (when (and oi (= oi 0) (/= oi ci)) ; was flush, is now indented:
-	   (org-indent-add-properties bl-beg bl-end)) ; repair block's prefixes
-	 (when (< bl-beg beg)		; 1st block straddles BEG
-	   (if (eq oi ci) (setq bl-beg beg) (setq full-block t)))
-	 (when (> bl-end end)		; last block straddles END
-	   (if (eq oi ci) (setq bl-end end) (setq full-block t)))
-	 (when full-block
-	   (with-silent-modifications
-	     (remove-text-properties bl-beg bl-end '(omi/display nil))))
-	 (omi/-draw-block bl-beg bl-end beg0 end0 (length pf) ci))))))
+		      (lambda (bl-beg bl-end)
+			(let ((beg0 bl-beg) (end0 bl-end)
+			      (pf (get-text-property bl-beg 'line-prefix))
+			      oi-pos oi ci full-block)
+			  (save-excursion
+			    (goto-char bl-beg)
+			    (back-to-indentation)
+			    (setq oi-pos (point)
+				  oi (get-text-property oi-pos :omi/indent)
+				  ci (current-indentation)))
+			  (unless (eq oi ci)
+			    (put-text-property oi-pos (1+ oi-pos) :omi/indent ci))
+			  (when (and oi (= oi 0) (/= oi ci)) ; was flush, is now indented:
+			    (org-indent-add-properties bl-beg bl-end)) ; repair block's prefixes
+			  (when (< bl-beg beg) ; 1st block straddles BEG
+			    (if (eq oi ci) (setq bl-beg beg) (setq full-block t)))
+			  (when (> bl-end end) ; last block straddles END
+			    (if (eq oi ci) (setq bl-end end) (setq full-block t)))
+			  (when full-block
+			    (with-silent-modifications
+			      (remove-text-properties bl-beg bl-end '(omi/display nil))))
+			  (omi/-draw-block bl-beg bl-end beg0 end0 (length pf) ci))))))
 
 ;;;; Mode/setup
 (defun omi/init (&optional buf)
