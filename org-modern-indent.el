@@ -97,7 +97,7 @@ the contents."
 ;;;; Finding and operating on blocks
 (defsubst omi/-block-p (el)
   "Return non-nil if EL is an org block element."
-  (when-let ((el) (type (car el)))
+  (when-let* ((el) (type (car el)))
     (memq type
 	  '(center-block comment-block dynamic-block
 			 example-block export-block quote-block
@@ -108,7 +108,7 @@ the contents."
 Considers both the element at point, and its parent.  Does not consider
 affiliated content like title as part of the block."
   (let ((pos (or pos (point))))
-    (when-let ((element (org-element-at-point pos)))
+    (when-let* ((element (org-element-at-point pos)))
       (when (or (omi/-block-p element)
 		(omi/-block-p
 		 (setq element (org-element-property :parent element))))
@@ -270,7 +270,7 @@ value `damaged' for damaged block."
 
 (defun omi/-pos-in-leader-p (pos)
   "Return non-nil if a block's header/footer leader text encompasses POS."
-  (when-let ((node (omi/-block-at-point pos)))
+  (when-let* ((node (omi/-block-at-point pos)))
     (org-with-wide-buffer
      (cl-destructuring-bind (bbeg . bend) (omi/-block-beg-end node)
        (or (omi/-intersects-leader-at bbeg pos pos)
